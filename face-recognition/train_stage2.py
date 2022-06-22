@@ -37,6 +37,20 @@ import argparse
 from tqdm import tqdm
 import torch.nn.functional as F
 
+def freeze_batchnorm(model):
+    for name, layer in model._modules.items():
+        if isinstance(layer, nn.Sequential):
+            freeze_batchnorm(layer)
+        else:
+            for name, layer2 in layer._modules.items():
+                if isinstance(layer2, nn.BatchNorm2d):
+                    if hasattr(layer2, 'weight'):
+                        layer2.weight.requires_grad_(False)
+                    if hasattr(layer2, 'bias'):
+                        layer2.bias.requires_grad_(False)
+                    layer2.eval()
+                        
+                    
 def train(args):
     # gpu init
     multi_gpus = False
@@ -69,11 +83,13 @@ def train(args):
     else:
         raise('Select Proper Backbone Network')
     
-    aux_net = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
+    aux_net = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 1],
                   nChannels=[24, 96, 384, 1536], nClasses=1000, init_ds=2,
-                  dropout_rate=0., affineBN=True, in_shape=[3, 224, 224],
+                  dropout_rate=0., affineBN=True, in_shape=[3, 112, 112],
                   mult=4)
-    aux_net.load_state_dict(torch.load(args.teacher_path)['net_state_dict'])
+    
+    net.load_state_dict(torch.load(args.teacher_path)['net1_state_dict'])
+    aux_net.load_state_dict(torch.load(args.teacher_path)['net2_state_dict'])
     for param in aux_net.parameters():
         param.requires_grad = False
 
@@ -116,8 +132,10 @@ def train(args):
     # Run
     GOING = True
     while GOING:
-        # train model
+        # train model and freeze batchnorm for main network
         net.train()
+        freeze_batchnorm(net)
+        margin.train()
         aux_net.eval()
 
         since = time.time()
@@ -132,7 +150,6 @@ def train(args):
             # Loss
             cri_loss = criterion(out, label)
             recon_loss = F.l1_loss(HR_img_gen, HR_img)
-            print(recon_loss)
             total_loss = cri_loss + recon_loss * (1.0)
 
 
@@ -214,6 +231,8 @@ def train(args):
 
     # test dataset
     net.eval()
+    aux_net.eval()
+    margin.eval()
     
     print('Evaluation on LFW, AgeDB-30. CFP')
     os.makedirs(os.path.join(args.save_dir, 'result'), exist_ok=True)
@@ -254,7 +273,7 @@ if __name__ == '__main__':
     parser.add_argument('--scale_size', type=float, default=30.0, help='scale size')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size')
     parser.add_argument('--save_freq', type=int, default=10000, help='save frequency')
-    parser.add_argument('--gpus', type=str, default='1', help='model prefix')
+    parser.add_argument('--gpus', type=str, default='0', help='model prefix')
     
     parser.add_argument('--teacher_path', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage1/last_net.ckpt')
     args = parser.parse_args()
@@ -269,6 +288,8 @@ if __name__ == '__main__':
     args.cfpfp_test_root = os.path.join(args.data_dir, 'evaluation/cfp_fp')
     args.cfpfp_file_list = os.path.join(args.data_dir, 'evaluation/cfp_fp.txt')
 
+    args.distill_type = 'qualnet_stage2'
+    
     # Logger
     import neptune.new as neptune
     monitor_hardware = True

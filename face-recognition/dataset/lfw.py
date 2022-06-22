@@ -23,12 +23,10 @@ def img_loader(path, down_size):
             high_img = cv2.imread(path)
             if len(high_img.shape) == 2:
                 high_img = np.stack([high_img] * 3, 2)
-            high_img = cv2.resize(high_img, dsize=(128, 128), interpolation=cv2.INTER_NEAREST)
-                
             
-            if down_size != 128:
+            if down_size != 112:
                 down_img = cv2.resize(high_img, dsize=(down_size, down_size), interpolation=cv2.INTER_NEAREST)
-                down_img = cv2.resize(down_img, dsize=(128, 128), interpolation=cv2.INTER_NEAREST)
+                down_img = cv2.resize(down_img, dsize=(112, 112), interpolation=cv2.INTER_NEAREST)
             else:
                 down_img = high_img
             return high_img, down_img
@@ -63,7 +61,7 @@ class LFW(data.Dataset):
 
     def __getitem__(self, index):
         if self.down_size == 0:
-            down_size = 128
+            down_size = 112
         else:
             down_size = self.down_size
             

@@ -16,6 +16,7 @@ import torch.utils.data
 from torch.nn import DataParallel
 from datetime import datetime
 from backbone.irevnet import iRevNet
+from backbone.iresnet import iresnet50
 from margin.ArcMarginProduct import ArcMarginProduct
 from margin.MultiMarginProduct import MultiMarginProduct
 from margin.CosineMarginProduct import CosineMarginProduct
@@ -63,10 +64,15 @@ def train(args):
     
 
     # define backbone and margin layer
-    net = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
+    if args.backbone == 'iresnet50':
+        net1 = iresnet50(attention_type=args.mode)
+    else:
+        raise('Select Proper Backbone Network')
+    
+    
+    net2 = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 1],
                   nChannels=[24, 96, 384, 1536], nClasses=1000, init_ds=2,
-                  dropout_rate=0., affineBN=True, in_shape=[3, 224, 224],
-                  mult=4)
+                  dropout_rate=0., affineBN=True, in_shape=[3, 112, 112], mult=4)
 
     if args.margin_type == 'ArcFace':
         margin = ArcMarginProduct(args.feature_dim, trainset.class_nums, s=args.scale_size)
@@ -85,17 +91,20 @@ def train(args):
     # define optimizers for different layer
     criterion = torch.nn.CrossEntropyLoss().to(device)
     optimizer_ft = optim.SGD([
-        {'params': net.parameters(), 'weight_decay': 5e-4},
-        {'params': margin.parameters(), 'weight_decay': 5e-4}
+        {'params': net1.parameters(), 'weight_decay': 5e-4},
+        {'params': margin.parameters(), 'weight_decay': 5e-4},
+        {'params': net2.parameters(), 'weight_decay': 5e-4}
     ], lr=0.1, momentum=0.9, nesterov=True)
     exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[18000, 28000, 36000, 44000], \
                                                 gamma=0.1)
 
     if multi_gpus:
-        net = DataParallel(net).to(device)
+        net1 = DataParallel(net1).to(device)
+        net2 = DataParallel(net2).to(device)
         margin = DataParallel(margin).to(device)
     else:
-        net = net.to(device)
+        net1 = net1.to(device)
+        net2 = net2.to(device)
         margin = margin.to(device)
 
     total_iters = 0
@@ -104,19 +113,25 @@ def train(args):
     GOING = True
     while GOING:
         # train model
-        net.train()
+        net1.train()
+        net2.train()
+        margin.train()
 
         since = time.time()
         for data in tqdm(trainloader):            
             run['result/iters'].log(total_iters)
-            HR_img, label = data[1].to(device), data[2].to(device)                  
+            HR_img, label = data[0].to(device), data[2].to(device)                  
                         
-            raw_logits, out_bij = net(HR_img, train=True)
+            raw_logits, out_bij = net1(HR_img, train=True)
             out = margin(raw_logits, label)
+            
+            with torch.no_grad():
+                HR_img_gen = net2.inverse(out_bij)
             
             # Loss
             cri_loss = criterion(out, label)
-            total_loss = cri_loss
+            recon_loss = F.l1_loss(HR_img_gen, HR_img)
+            total_loss = cri_loss + recon_loss * (1.0)
 
 
             # Optim
@@ -144,18 +159,24 @@ def train(args):
                 msg = 'Saving checkpoint: {}'.format(total_iters)
                 _print(msg)
                 if multi_gpus:
-                    net_state_dict = net.module.state_dict()
+                    net1_state_dict = net1.module.state_dict()
+                    net2_state_dict = net2.module.state_dict()
                     margin_state_dict = margin.module.state_dict()
                 else:
-                    net_state_dict = net.state_dict()
+                    net1_state_dict = net1.state_dict()
+                    net2_state_dict = net2.state_dict()
                     margin_state_dict = margin.state_dict()
+                    
                 if not os.path.exists(save_dir):
                     os.mkdir(save_dir)
                     
                 torch.save({
                     'iters': total_iters,
-                    'net_state_dict': net_state_dict},
+                    'net1_state_dict': net1_state_dict,
+                    'net2_state_dict': net2_state_dict
+                    },
                     os.path.join(save_dir, 'Iter_%06d_net.ckpt' % total_iters))
+                
                 torch.save({
                     'iters': total_iters,
                     'net_state_dict': margin_state_dict},
@@ -179,15 +200,19 @@ def train(args):
     msg = 'Saving checkpoint: {}'.format(total_iters)
     _print(msg)
     if multi_gpus:
-        net_state_dict = net.module.state_dict()
+        net1_state_dict = net1.module.state_dict()
+        net2_state_dict = net2.module.state_dict()
         margin_state_dict = margin.module.state_dict()
     else:
-        net_state_dict = net.state_dict()
+        net1_state_dict = net1.state_dict()
+        net2_state_dict = net2.state_dict()
         margin_state_dict = margin.state_dict()
         
     torch.save({
         'iters': total_iters,
-        'net_state_dict': net_state_dict},
+        'net1_state_dict': net1_state_dict,
+        'net2_state_dict': net2_state_dict
+        },
         os.path.join(save_dir, 'last_net.ckpt'))
     torch.save({
         'iters': total_iters,
@@ -196,7 +221,9 @@ def train(args):
 
 
     # test dataset
-    net.eval()
+    net1.eval()
+    net2.eval()
+    margin.eval()
     
     print('Evaluation on LFW, AgeDB-30. CFP')
     os.makedirs(os.path.join(args.save_dir, 'result'), exist_ok=True)
@@ -228,10 +255,12 @@ def train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch for deep face recognition')
     parser.add_argument('--data_dir', type=str, default='/data/sung/dataset/Face')
-    parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage1', help='model save dir')
+    parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage1/iresnet50-ir', help='model save dir')
     parser.add_argument('--down_size', type=int, default=0) # 1 : all type, 0 : high, others : low
     parser.add_argument('--margin_type', type=str, default='CosFace', help='ArcFace, CosFace, SphereFace, MultiMargin, Softmax')
     parser.add_argument('--feature_dim', type=int, default=512, help='feature dimension, 128 or 512')
+    parser.add_argument('--backbone', type=str, default='iresnet50')
+    parser.add_argument('--mode', type=str, default='ir')
     parser.add_argument('--scale_size', type=float, default=30.0, help='scale size')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size')
     parser.add_argument('--save_freq', type=int, default=10000, help='save frequency')
@@ -247,6 +276,8 @@ if __name__ == '__main__':
     args.agedb_file_list = os.path.join(args.data_dir, 'evaluation/agedb_30.txt')
     args.cfpfp_test_root = os.path.join(args.data_dir, 'evaluation/cfp_fp')
     args.cfpfp_file_list = os.path.join(args.data_dir, 'evaluation/cfp_fp.txt')
+    
+    args.distill_type = 'qualnet_stage1'
 
     # Logger
     import neptune.new as neptune

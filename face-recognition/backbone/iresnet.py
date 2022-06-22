@@ -121,7 +121,7 @@ class IResNet(nn.Module):
         
         
         # Bridge
-        self.conv_bridge = nn.Conv2d(512, 3072, kernel_size=3, stride=2, padding=1)
+        self.conv_bridge = nn.Conv2d(512, 3072, kernel_size=3, stride=1, padding=1)
         
         
         # Option A
@@ -185,7 +185,8 @@ class IResNet(nn.Module):
         x = self.layer4(x)
         
         # Bridge and Reconstruction
-        x_recon = self.conv_bridge(x)
+        if train:
+            x_recon = self.conv_bridge(x)
         
         # Option-A
         x = self.gp(x)
