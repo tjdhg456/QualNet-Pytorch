@@ -37,6 +37,12 @@ import argparse
 from tqdm import tqdm
 import torch.nn.functional as F
 
+def un_normalize(image, mu=torch.tensor([0.5, 0.5, 0.5]).float(), std=torch.tensor([0.5, 0.5, 0.5]).float()):
+    image = image.permute(0, 2, 3, 1) * std + mu
+    image = image.permute(0, 3, 1, 2)
+    return image
+
+
 def freeze_batchnorm(model):
     for name, layer in model._modules.items():
         if isinstance(layer, nn.Sequential):
@@ -135,6 +141,7 @@ def train(args):
         # train model and freeze batchnorm for main network
         net.train()
         freeze_batchnorm(net)
+        
         margin.train()
         aux_net.eval()
 
@@ -149,7 +156,7 @@ def train(args):
             
             # Loss
             cri_loss = criterion(out, label)
-            recon_loss = F.l1_loss(HR_img_gen, HR_img)
+            recon_loss = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_img))
             total_loss = cri_loss + recon_loss * (1.0)
 
 

@@ -37,6 +37,13 @@ import argparse
 from tqdm import tqdm
 import torch.nn.functional as F
 
+def un_normalize(image, mu=torch.tensor([0.5, 0.5, 0.5]).float(), std=torch.tensor([0.5, 0.5, 0.5]).float()):
+    device = image.device
+    image = image.permute(0, 2, 3, 1) * std.to(device) + mu.to(device)
+    image = image.permute(0, 3, 1, 2)
+    return image
+    
+    
 def train(args):
     # gpu init
     multi_gpus = False
@@ -125,12 +132,11 @@ def train(args):
             raw_logits, out_bij = net1(HR_img, train=True)
             out = margin(raw_logits, label)
             
-            with torch.no_grad():
-                HR_img_gen = net2.inverse(out_bij)
+            HR_img_gen = net2.inverse(out_bij)
             
             # Loss
             cri_loss = criterion(out, label)
-            recon_loss = F.l1_loss(HR_img_gen, HR_img)
+            recon_loss = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_img))
             total_loss = cri_loss + recon_loss * (1.0)
 
 
