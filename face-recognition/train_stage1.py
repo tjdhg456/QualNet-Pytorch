@@ -248,12 +248,12 @@ def train(args):
         # run['result/lfw_acc_%d' %down_size].log(np.mean(lfw_accs) * 100)
         
         # test model on AgeDB30
-        getFeatureFromTorch(os.path.join(args.save_dir, 'result/cur_agedb30_result.mat'), net, device, agedbdataset, agedbloader)
+        getFeatureFromTorch(os.path.join(args.save_dir, 'result/cur_agedb30_result.mat'), net1, device, agedbdataset, agedbloader)
         age_accs = evaluation_10_fold(os.path.join(args.save_dir, 'result/cur_agedb30_result.mat'))
         run['result/age_acc_%d' %down_size].log(np.mean(age_accs) * 100)
 
         # test model on CFP-FP
-        getFeatureFromTorch(os.path.join(args.save_dir, 'result/cur_cfpfp_result.mat'), net, device, cfpfpdataset, cfpfploader)
+        getFeatureFromTorch(os.path.join(args.save_dir, 'result/cur_cfpfp_result.mat'), net1, device, cfpfpdataset, cfpfploader)
         cfp_accs = evaluation_10_fold(os.path.join(args.save_dir, 'result/cur_cfpfp_result.mat'))
         run['result/cfp_acc_%d' %down_size].log(np.mean(cfp_accs) * 100)
 

@@ -38,7 +38,8 @@ from tqdm import tqdm
 import torch.nn.functional as F
 
 def un_normalize(image, mu=torch.tensor([0.5, 0.5, 0.5]).float(), std=torch.tensor([0.5, 0.5, 0.5]).float()):
-    image = image.permute(0, 2, 3, 1) * std + mu
+    device = image.device
+    image = image.permute(0, 2, 3, 1) * std.to(device) + mu.to(device)
     image = image.permute(0, 3, 1, 2)
     return image
 
@@ -54,7 +55,6 @@ def freeze_batchnorm(model):
                         layer2.weight.requires_grad_(False)
                     if hasattr(layer2, 'bias'):
                         layer2.bias.requires_grad_(False)
-                    layer2.eval()
                         
                     
 def train(args):
@@ -94,7 +94,10 @@ def train(args):
                   dropout_rate=0., affineBN=True, in_shape=[3, 112, 112],
                   mult=4)
     
-    net.load_state_dict(torch.load(args.teacher_path)['net1_state_dict'])
+    if args.pretrained_student:
+        net.load_state_dict(torch.load(args.teacher_path)['net1_state_dict'])
+        freeze_batchnorm(net)
+        
     aux_net.load_state_dict(torch.load(args.teacher_path)['net2_state_dict'])
     for param in aux_net.parameters():
         param.requires_grad = False
@@ -121,8 +124,7 @@ def train(args):
         {'params': net.parameters(), 'weight_decay': 5e-4},
         {'params': margin.parameters(), 'weight_decay': 5e-4}
     ], lr=0.1, momentum=0.9, nesterov=True)
-    exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[18000, 28000, 36000, 44000], \
-                                                gamma=0.1)
+    exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[18000, 28000, 36000, 44000], gamma=0.1)
 
     if multi_gpus:
         net = DataParallel(net).to(device)
@@ -139,9 +141,7 @@ def train(args):
     GOING = True
     while GOING:
         # train model and freeze batchnorm for main network
-        net.train()
-        freeze_batchnorm(net)
-        
+        net.train()        
         margin.train()
         aux_net.eval()
 
@@ -282,6 +282,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_freq', type=int, default=10000, help='save frequency')
     parser.add_argument('--gpus', type=str, default='0', help='model prefix')
     
+    parser.add_argument('--pretrained_student', type=lambda x: x.lower()=='true', default=True)
     parser.add_argument('--teacher_path', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage1/last_net.ckpt')
     args = parser.parse_args()
 
