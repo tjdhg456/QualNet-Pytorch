@@ -17,6 +17,7 @@ from torch.nn import DataParallel
 from datetime import datetime
 from backbone.irevnet import iRevNet
 from backbone.iresnet import iresnet50
+from backbone.resnet import ResNet
 from margin.ArcMarginProduct import ArcMarginProduct
 from margin.MultiMarginProduct import MultiMarginProduct
 from margin.CosineMarginProduct import CosineMarginProduct
@@ -73,6 +74,8 @@ def train(args):
     # define backbone and margin layer
     if args.backbone == 'iresnet50':
         net1 = iresnet50(attention_type=args.mode)
+    elif args.backbone == 'resnet50':
+        net1 = ResNet(num_layers=50, mode=args.mode)
     else:
         raise('Select Proper Backbone Network')
     

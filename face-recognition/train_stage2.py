@@ -17,6 +17,7 @@ from backbone.iresnet import iresnet50
 from torch.nn import DataParallel
 from datetime import datetime
 from backbone.irevnet import iRevNet
+from backbone.resnet import ResNet
 from margin.ArcMarginProduct import ArcMarginProduct
 from margin.MultiMarginProduct import MultiMarginProduct
 from margin.CosineMarginProduct import CosineMarginProduct
@@ -50,12 +51,15 @@ def freeze_batchnorm(model):
             freeze_batchnorm(layer)
         else:
             for name, layer2 in layer._modules.items():
-                if isinstance(layer2, nn.BatchNorm2d):
-                    if hasattr(layer2, 'weight'):
-                        layer2.weight.requires_grad_(False)
-                    if hasattr(layer2, 'bias'):
-                        layer2.bias.requires_grad_(False)
-                        
+                if isinstance(layer2, nn.Sequential):
+                    freeze_batchnorm(layer2)
+                else:
+                    if isinstance(layer2, nn.BatchNorm2d):
+                        if hasattr(layer2, 'weight'):
+                            layer2.weight.requires_grad_(False)
+                        if hasattr(layer2, 'bias'):
+                            layer2.bias.requires_grad_(False)
+                            
                     
 def train(args):
     # gpu init
@@ -86,6 +90,8 @@ def train(args):
     # define backbone and margin layer
     if args.backbone == 'iresnet50':
         net = iresnet50(attention_type=args.mode)
+    elif args.backbone == 'resnet50':
+        net = ResNet(num_layers=50, mode=args.mode)
     else:
         raise('Select Proper Backbone Network')
     
@@ -283,7 +289,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpus', type=str, default='0', help='model prefix')
     
     parser.add_argument('--pretrained_student', type=lambda x: x.lower()=='true', default=True)
-    parser.add_argument('--teacher_path', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage1/last_net.ckpt')
+    parser.add_argument('--teacher_path', type=str, default='/data/sung/checkpoint/robustness/face_recognition/resnet50-cbam/qualnet_stage1_ArcFace/scale0/last_net.ckpt')
     args = parser.parse_args()
 
     # Path
