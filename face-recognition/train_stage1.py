@@ -263,7 +263,7 @@ def train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch for deep face recognition')
-    parser.add_argument('--data_dir', type=str, default='/data/sung/dataset/Face')
+    parser.add_argument('--data_dir', type=str, default='/home/sung/dataset/Face')
     parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage1/iresnet50-ir', help='model save dir')
     parser.add_argument('--down_size', type=int, default=0) # 1 : all type, 0 : high, others : low
     parser.add_argument('--margin_type', type=str, default='CosFace', help='ArcFace, CosFace, SphereFace, MultiMargin, Softmax')
