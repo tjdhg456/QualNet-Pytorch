@@ -37,7 +37,21 @@ import torchvision.transforms as transforms
 import argparse
 from tqdm import tqdm
 import torch.nn.functional as F
+import random
 
+
+def set_random_seed(seed_value, use_cuda=True):
+    np.random.seed(seed_value) # cpu vars
+    torch.manual_seed(seed_value) # cpu  vars
+    random.seed(seed_value) # Python
+    os.environ['PYTHONHASHSEED'] = str(seed_value) # Python hash buildin
+    if use_cuda: 
+        torch.cuda.manual_seed(seed_value)
+        torch.cuda.manual_seed_all(seed_value) # gpu vars
+        torch.backends.cudnn.deterministic = True  #needed
+        torch.backends.cudnn.benchmark = False
+        
+        
 def un_normalize(image, mu=torch.tensor([0.5, 0.5, 0.5]).float(), std=torch.tensor([0.5, 0.5, 0.5]).float()):
     device = image.device
     image = image.permute(0, 2, 3, 1) * std.to(device) + mu.to(device)
@@ -237,19 +251,12 @@ def train(args):
     print('Evaluation on LFW, AgeDB-30. CFP')
     os.makedirs(os.path.join(args.save_dir, 'result'), exist_ok=True)
     for down_size in [14, 28, 56, 112]:
-        # lfwdataset = LFW(args.lfw_test_root, args.lfw_file_list, down_size, transform=transform)
         agedbdataset = AgeDB30(args.agedb_test_root, args.agedb_file_list, down_size, transform=transform)
         cfpfpdataset = CFP_FP(args.cfpfp_test_root, args.cfpfp_file_list, down_size, transform=transform)
         
-        # lfwloader = torch.utils.data.DataLoader(lfwdataset, batch_size=128, shuffle=False, num_workers=4, drop_last=False)
-        agedbloader = torch.utils.data.DataLoader(agedbdataset, batch_size=128, shuffle=False, num_workers=4, drop_last=False)
-        cfpfploader = torch.utils.data.DataLoader(cfpfpdataset, batch_size=128, shuffle=False, num_workers=4, drop_last=False)
+        agedbloader = torch.utils.data.DataLoader(agedbdataset, batch_size=1, shuffle=False, num_workers=4, drop_last=False)
+        cfpfploader = torch.utils.data.DataLoader(cfpfpdataset, batch_size=1, shuffle=False, num_workers=4, drop_last=False)
 
-        # # test model on lfw
-        # getFeatureFromTorch(os.path.join(args.save_dir, 'result/cur_lfw_result.mat'), net, device, lfwdataset, lfwloader)
-        # lfw_accs = evaluation_10_fold(os.path.join(args.save_dir, 'result/cur_lfw_result.mat'))
-        # run['result/lfw_acc_%d' %down_size].log(np.mean(lfw_accs) * 100)
-        
         # test model on AgeDB30
         getFeatureFromTorch(os.path.join(args.save_dir, 'result/cur_agedb30_result.mat'), net1, device, agedbdataset, agedbloader)
         age_accs = evaluation_10_fold(os.path.join(args.save_dir, 'result/cur_agedb30_result.mat'))
@@ -264,8 +271,9 @@ def train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch for deep face recognition')
     parser.add_argument('--data_dir', type=str, default='/data/sung/dataset/Face')
-    parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage1/iresnet50-ir', help='model save dir')
+    parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/lr_face_recognition/qualnet_cosface/stage1', help='model save dir')
     parser.add_argument('--down_size', type=int, default=0) # 1 : all type, 0 : high, others : low
+    parser.add_argument('--seed', type=int, default=1) # 1 : all type, 0 : high, others : low
     parser.add_argument('--margin_type', type=str, default='CosFace', help='ArcFace, CosFace, SphereFace, MultiMargin, Softmax')
     parser.add_argument('--feature_dim', type=int, default=512, help='feature dimension, 128 or 512')
     parser.add_argument('--backbone', type=str, default='iresnet50')
@@ -287,6 +295,9 @@ if __name__ == '__main__':
     args.cfpfp_file_list = os.path.join(args.data_dir, 'evaluation/cfp_fp.txt')
     
     args.distill_type = 'qualnet_stage1'
+
+    # Set seed
+    set_random_seed(args.seed)
 
     # Logger
     import neptune.new as neptune

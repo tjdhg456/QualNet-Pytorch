@@ -37,7 +37,21 @@ import torchvision.transforms as transforms
 import argparse
 from tqdm import tqdm
 import torch.nn.functional as F
+import random
 
+
+def set_random_seed(seed_value, use_cuda=True):
+    np.random.seed(seed_value) # cpu vars
+    torch.manual_seed(seed_value) # cpu  vars
+    random.seed(seed_value) # Python
+    os.environ['PYTHONHASHSEED'] = str(seed_value) # Python hash buildin
+    if use_cuda: 
+        torch.cuda.manual_seed(seed_value)
+        torch.cuda.manual_seed_all(seed_value) # gpu vars
+        torch.backends.cudnn.deterministic = True  #needed
+        torch.backends.cudnn.benchmark = False
+        
+        
 def un_normalize(image, mu=torch.tensor([0.5, 0.5, 0.5]).float(), std=torch.tensor([0.5, 0.5, 0.5]).float()):
     device = image.device
     image = image.permute(0, 2, 3, 1) * std.to(device) + mu.to(device)
@@ -165,7 +179,6 @@ def train(args):
             recon_loss = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_img))
             total_loss = cri_loss + recon_loss * (1.0)
 
-
             # Optim
             optimizer_ft.zero_grad()
             total_loss.backward()
@@ -255,8 +268,8 @@ def train(args):
         cfpfpdataset = CFP_FP(args.cfpfp_test_root, args.cfpfp_file_list, down_size, transform=transform)
         
         # lfwloader = torch.utils.data.DataLoader(lfwdataset, batch_size=128, shuffle=False, num_workers=4, drop_last=False)
-        agedbloader = torch.utils.data.DataLoader(agedbdataset, batch_size=128, shuffle=False, num_workers=4, drop_last=False)
-        cfpfploader = torch.utils.data.DataLoader(cfpfpdataset, batch_size=128, shuffle=False, num_workers=4, drop_last=False)
+        agedbloader = torch.utils.data.DataLoader(agedbdataset, batch_size=1, shuffle=False, num_workers=4, drop_last=False)
+        cfpfploader = torch.utils.data.DataLoader(cfpfpdataset, batch_size=1, shuffle=False, num_workers=4, drop_last=False)
 
         # # test model on lfw
         # getFeatureFromTorch(os.path.join(args.save_dir, 'result/cur_lfw_result.mat'), net, device, lfwdataset, lfwloader)
@@ -279,6 +292,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, default='/data/sung/dataset/Face')
     parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage2/scale1/iresnet50-ir_1', help='model save dir')
     parser.add_argument('--down_size', type=int, default=1) # 1 : all type, 0 : high, others : low
+    parser.add_argument('--seed', type=int, default=1) # 1 : all type, 0 : high, others : low
     parser.add_argument('--mode', type=str, default='ir', help='attention type', choices=['ir', 'cbam'])
     parser.add_argument('--backbone', type=str, default='iresnet50')
     parser.add_argument('--margin_type', type=str, default='CosFace', help='ArcFace, CosFace, SphereFace, MultiMargin, Softmax')
@@ -292,6 +306,7 @@ if __name__ == '__main__':
     parser.add_argument('--teacher_path', type=str, default='/data/sung/checkpoint/robustness/face_recognition/resnet50-cbam/qualnet_stage1_ArcFace/scale0/last_net.ckpt')
     args = parser.parse_args()
 
+
     # Path
     args.train_root = os.path.join(args.data_dir, 'faces_webface_112x112/image')
     args.train_file_list = os.path.join(args.data_dir, 'faces_webface_112x112/train.list')
@@ -304,6 +319,10 @@ if __name__ == '__main__':
 
     args.distill_type = 'qualnet_stage2'
     
+    # Set seed
+    set_random_seed(args.seed)
+    
+
     # Logger
     import neptune.new as neptune
     monitor_hardware = True
