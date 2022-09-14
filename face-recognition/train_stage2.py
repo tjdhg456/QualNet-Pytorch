@@ -289,8 +289,8 @@ def train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch for deep face recognition')
-    parser.add_argument('--data_dir', type=str, default='/data/sung/dataset/Face')
-    parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/robustness/face_recognition/qualnet_stage2/scale1/iresnet50-ir_1', help='model save dir')
+    parser.add_argument('--data_dir', type=str, default='/home/sung/dataset/Face')
+    parser.add_argument('--save_dir', type=str, default='/home/sung/checkpoint/robustness/face_recognition/qualnet_stage2/scale1/iresnet50-ir_1', help='model save dir')
     parser.add_argument('--down_size', type=int, default=1) # 1 : all type, 0 : high, others : low
     parser.add_argument('--seed', type=int, default=1) # 1 : all type, 0 : high, others : low
     parser.add_argument('--mode', type=str, default='ir', help='attention type', choices=['ir', 'cbam'])
@@ -303,7 +303,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpus', type=str, default='0', help='model prefix')
     
     parser.add_argument('--pretrained_student', type=lambda x: x.lower()=='true', default=True)
-    parser.add_argument('--teacher_path', type=str, default='/data/sung/checkpoint/robustness/face_recognition/resnet50-cbam/qualnet_stage1_ArcFace/scale0/last_net.ckpt')
+    parser.add_argument('--teacher_path', type=str, default='/home/sung/checkpoint/robustness/face_recognition/resnet50-cbam/qualnet_stage1_ArcFace/scale0/last_net.ckpt')
     args = parser.parse_args()
 
 
