@@ -250,12 +250,20 @@ def train(args):
     
     print('Evaluation on LFW, AgeDB-30. CFP')
     os.makedirs(os.path.join(args.save_dir, 'result'), exist_ok=True)
-    for down_size in [14, 28, 56, 112]:
+    
+    if args.down_size == 1:
+        eval_list = [112, 56, 28, 14]
+    elif args.down_size == 0:
+        eval_list = [112]
+    else: 
+        eval_list = [args.down_size]
+        
+    for down_size in eval_list:
         agedbdataset = AgeDB30(args.agedb_test_root, args.agedb_file_list, down_size, transform=transform)
         cfpfpdataset = CFP_FP(args.cfpfp_test_root, args.cfpfp_file_list, down_size, transform=transform)
         
-        agedbloader = torch.utils.data.DataLoader(agedbdataset, batch_size=1, shuffle=False, num_workers=4, drop_last=False)
-        cfpfploader = torch.utils.data.DataLoader(cfpfpdataset, batch_size=1, shuffle=False, num_workers=4, drop_last=False)
+        agedbloader = torch.utils.data.DataLoader(agedbdataset, batch_size=args.batch_size, shuffle=False, num_workers=4, drop_last=False)
+        cfpfploader = torch.utils.data.DataLoader(cfpfpdataset, batch_size=args.batch_size, shuffle=False, num_workers=4, drop_last=False)
 
         # test model on AgeDB30
         getFeatureFromTorch(os.path.join(args.save_dir, 'result/cur_agedb30_result.mat'), net1, device, agedbdataset, agedbloader)
