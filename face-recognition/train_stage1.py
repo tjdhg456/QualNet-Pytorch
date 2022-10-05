@@ -312,7 +312,7 @@ if __name__ == '__main__':
     monitor_hardware = True
     mode = 'async'
     token = 'eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI5MTQ3MjY2Yy03YmM4LTRkOGYtOWYxYy0zOTk3MWI0ZDY3M2MifQ=='
-    run = neptune.init('sunghoshin/ROBUSTNESS', api_token=token,
+    run = neptune.init('sunghoshin/CVPR-Face', api_token=token,
                 capture_stdout=monitor_hardware,
                 capture_stderr=monitor_hardware,
                 capture_hardware_metrics=monitor_hardware,
