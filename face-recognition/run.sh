@@ -1,5 +1,6 @@
 # Teacher Training
-python train_stage1.py --gpus 2 --down_size 0 --seed 0 --mode ir --backbone iresnet50 --margin_type CosFace --save_dir /data/sung/checkpoint/CVPR_FACE/qualnet_teacher/high/iresnet50-ir
+# python train_stage1.py --gpus 2 --down_size 0 --seed 0 --mode ir --backbone iresnet50 --margin_type CosFace --save_dir /data/sung/checkpoint/CVPR_FACE/qualnet_teacher/high/iresnet50-ir
+python train_stage1.py --gpus 3 --down_size 0 --seed 0 --mode ir --backbone iresnet100 --margin_type CosFace --save_dir /data/sung/checkpoint/CVPR_FACE/qualnet_teacher/high/iresnet100-ir
 
 
 # Student Training
