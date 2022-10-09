@@ -31,12 +31,7 @@ def load_student_model(args):
     
     
     # Load Pre-trained Teacher    
-    if args.teacher_backbone == 'resnet50':
-        teacher_model = load_resnet(depth=50, num_classes=args.num_classes, attention_type=args.mode)
-    elif args.teacher_backbone == 'resnet101':
-        teacher_model = load_resnet(depth=101, num_classes=args.num_classes, attention_type=args.mode)
-    else:
-        raise('Select Proper Teacher Backbone')
-    
-    teacher_model.load_state_dict(torch.load(args.teacher_path)['model'])
+    teacher_model = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
+                  nChannels=[24, 96, 384, 1536], nClasses=1000, init_ds=2,
+                  dropout_rate=0., affineBN=True, in_shape=[3, 256, 256], mult=4)
     return model, teacher_model
