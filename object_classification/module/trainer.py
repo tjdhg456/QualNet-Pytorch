@@ -36,7 +36,7 @@ def accuracy(output, target, topk=(1,)):
 
 
 
-def train_stage1(args, rank, epoch, model, decoder, criterion, optimizer, multi_gpu, tr_loader, scaler, logger, save_folder):
+def train_stage1(args, rank, epoch, model_wrapper, criterion, optimizer, multi_gpu, tr_loader, scaler, logger, save_folder):
     # GPU setup
     num_gpu = len(args.gpus.split(','))
 
@@ -46,9 +46,8 @@ def train_stage1(args, rank, epoch, model, decoder, criterion, optimizer, multi_
     mean_acc5 = 0.
 
     # Freeze !
-    model.train()    
-    decoder.train()
-    
+    model_wrapper.train()
+        
     # Run
     for iter, tr_data in enumerate(tqdm(tr_loader)):
         HR_img, _, label = tr_data
@@ -59,15 +58,8 @@ def train_stage1(args, rank, epoch, model, decoder, criterion, optimizer, multi_
             
         if scaler is not None:
             with torch.cuda.amp.autocast():
-                out, out_bij = model(HR_img, train=True)
-                
-                if multi_gpu:
-                    HR_img_gen = decoder.module.inverse(out_bij)
-                else:
-                    HR_img_gen = decoder.inverse(out_bij)
-                    
+                out, HR_img_gen = model_wrapper(HR_img, train=True)
                 loss_cls = criterion(out, label)
-                
                 loss_recon = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_img))
                 loss_total = loss_cls + loss_recon * (0.1)
 
@@ -76,13 +68,7 @@ def train_stage1(args, rank, epoch, model, decoder, criterion, optimizer, multi_
                 scaler.update()
                 
         else:
-            out, out_bij = model(HR_img, train=True)
-            
-            if multi_gpu:
-                HR_img_gen = decoder.module.inverse(out_bij)
-            else:
-                HR_img_gen = decoder.inverse(out_bij)
-            
+            out, HR_img_gen = model_wrapper(HR_img, train=True)
             loss_cls = criterion(out, label)
             loss_recon = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_img))
             loss_total = loss_cls + loss_recon * (0.1)
@@ -113,11 +99,11 @@ def train_stage1(args, rank, epoch, model, decoder, criterion, optimizer, multi_
 
     # Model Params
     if multi_gpu:
-        model_param = deepcopy(model.module.state_dict())
-        decoder_param = deepcopy(decoder.module.state_dict())
+        model_param = deepcopy(model_wrapper.module.model.state_dict())
+        decoder_param = deepcopy(model_wrapper.module.decoder.state_dict())
     else:
-        model_param = deepcopy(model.state_dict())
-        decoder_param = deepcopy(decoder.state_dict())
+        model_param = deepcopy(model_wrapper.model.state_dict())
+        decoder_param = deepcopy(model_wrapper.decoder.state_dict())
 
     # Save
     save_module = {'model': model_param, 'decoder': decoder_param, 'optimizer': deepcopy(optimizer.state_dict()), 'save_epoch': epoch}

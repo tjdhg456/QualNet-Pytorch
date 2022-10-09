@@ -86,7 +86,7 @@ def main(rank, args, save_folder, log, master_port):
         run = None
 
     # Load Model
-    model, decoder = load_teacher_model(args)
+    model_wrapper = load_teacher_model(args)
     criterion = nn.CrossEntropyLoss()
 
     # Multi-Processing GPUs
@@ -94,32 +94,22 @@ def main(rank, args, save_folder, log, master_port):
         setup(rank, num_gpu, master_port)
         torch.cuda.set_device(rank)
 
-        model.to(rank)
-        model = DDP(model, device_ids=[rank])
-        model = apply_gradient_allreduce(model)
-        
-        decoder.to(rank)
-        decoder = DDP(decoder, device_ids=[rank])
-        decoder = apply_gradient_allreduce(decoder)
-        
+        model_wrapper.to(rank)
+        model_wrapper = DDP(model_wrapper, device_ids=[rank], find_unused_parameters=True)
+        model_wrapper = apply_gradient_allreduce(model_wrapper)
+
         criterion.to(rank)
 
     else:
         if multi_gpu:
-            model = nn.DataParallel(model).to(rank)
-            decoder = nn.DataParallel(decoder).to(rank)
+            model_wrapper = nn.DataParallel(model_wrapper).to(rank)
         else:
-            model = model.to(rank)
-            decoder = decoder.to(rank)
+            model_wrapper = model_wrapper.to(rank)
             
             
 
     # Optimizer and Scheduler
-    optimizer = torch.optim.SGD([
-                                {'params': model.parameters()},
-                                {'params': decoder.parameters()}
-                                ], lr=args.lr, momentum=0.9, weight_decay=1e-4)
-        
+    optimizer = torch.optim.SGD(model_wrapper.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 60, 80], gamma=0.1)
 
     # Dataset and DataLoader
@@ -160,7 +150,7 @@ def main(rank, args, save_folder, log, master_port):
     # Run
     for epoch in range(total_epoch):
         scheduler.step()
-        save_param = train_stage1(args, rank, epoch, model, decoder, criterion, optimizer, multi_gpu, tr_loader, scaler, run, save_folder)
+        save_param = train_stage1(args, rank, epoch, model_wrapper, criterion, optimizer, multi_gpu, tr_loader, scaler, run, save_folder)
                
         # Log Learning Rate
         if run is not None:
@@ -171,14 +161,15 @@ def main(rank, args, save_folder, log, master_port):
         if (rank == 0) or (rank == 'cuda'):
             torch.save(save_param, os.path.join(args.save_dir, 'last_model.pt'))
 
-    
-    # Validation
-    if args.down_size == 0:
-        result = validation(args, rank, epoch, model, multi_gpu, val_loader_list[0], 256, run)
-    else:
-        resolution = [256, 128, 64, 32]
-        for ix, val_loader in enumerate(val_loader_list):
-            result = validation(args, rank, epoch, model, multi_gpu, val_loader, resolution[ix], run)
+        # Validation
+        if epoch % args.save_epoch == 0:
+            if args.down_size == 0:
+                result = validation(args, rank, epoch, model_wrapper, multi_gpu, val_loader_list[0], 256, run)
+            
+            else:
+                resolution = [256, 128, 64, 32]
+                for ix, val_loader in enumerate(val_loader_list):
+                    result = validation(args, rank, epoch, model_wrapper, multi_gpu, val_loader, resolution[ix], run)
 
     if ddp:
         cleanup()

@@ -30,14 +30,13 @@ def load_imagenet(args):
         normalize,
     ])
         
-      
+    
     tr_dataset = Base_Dset(os.path.join(args.data_dir, 'imagenet', 'train'), resize=tr_resize, transform=tr_transform, image_list=None, resolution=args.down_size)
     val_dataset_256 = Base_Dset(os.path.join(args.data_dir, 'imagenet', 'val'), resize=val_resize, transform=val_transform, image_list=None, resolution=256)
     val_dataset_128 = Base_Dset(os.path.join(args.data_dir, 'imagenet', 'val'), resize=val_resize, transform=val_transform, image_list=None, resolution=128)
     val_dataset_64 = Base_Dset(os.path.join(args.data_dir, 'imagenet', 'val'), resize=val_resize, transform=val_transform, image_list=None, resolution=64)
     val_dataset_32 = Base_Dset(os.path.join(args.data_dir, 'imagenet', 'val'), resize=val_resize, transform=val_transform, image_list=None, resolution=32)
-    val_dataset_16 = Base_Dset(os.path.join(args.data_dir, 'imagenet', 'val'), resize=val_resize, transform=val_transform, image_list=None, resolution=16)
-    return tr_dataset, [val_dataset_256, val_dataset_128, val_dataset_64, val_dataset_32, val_dataset_16]
+    return tr_dataset, [val_dataset_256, val_dataset_128, val_dataset_64, val_dataset_32]
 
 
 
@@ -87,7 +86,12 @@ class Base_Dset(Dataset):
     def __getitem__(self, index):
         # Resolution
         if self.resolution == 1:
-            down_size = random.sample([256, 128, 64, 32], k=1)[0]
+            # sampling (Equal = False)
+            choice = np.random.choice(['corrupt', 'none'], 1)[0]
+            if choice == 'corrupt':
+                down_size = random.sample([32, 64, 128], k=1)[0]
+            else:
+                down_size = 256
         elif self.resolution == 0:
             down_size = 256
         else:

@@ -191,13 +191,14 @@ def main(rank, args, save_folder, log, master_port):
             torch.save(save_param, os.path.join(args.save_dir, 'last_model.pt'))
 
     
-    # Validation
-    if args.down_size == 0:
-        result = validation(args, rank, epoch, model, multi_gpu, val_loader_list[0], 256, run)
-    else:
-        resolution = [256, 128, 64, 32]
-        for ix, val_loader in enumerate(val_loader_list):
-            result = validation(args, rank, epoch, model, multi_gpu, val_loader, resolution[ix], run)
+        # Validation
+        if epoch % args.save_epoch == 0:
+            if args.down_size == 0:
+                result = validation(args, rank, epoch, model, multi_gpu, val_loader_list[0], 256, run)
+            else:
+                resolution = [256, 128, 64, 32]
+                for ix, val_loader in enumerate(val_loader_list):
+                    result = validation(args, rank, epoch, model, multi_gpu, val_loader, resolution[ix], run)
 
     if ddp:
         cleanup()
@@ -207,6 +208,7 @@ def main(rank, args, save_folder, log, master_port):
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/imp')
+    parser.add_argument('--save_epoch', type=int, default=10)
     parser.add_argument('--total_epoch', type=int, default=90)
     
     parser.add_argument('--data_dir', type=str, default='/home/sung/dataset')
@@ -219,8 +221,7 @@ if __name__=='__main__':
     parser.add_argument('--lr', type=float, default=0.1)
     parser.add_argument('--down_size', type=int, default=1)
     parser.add_argument('--num_workers', type=int, default=8)
-    parser.add_argument('--save_epoch', type=int, default=10)
-    
+        
     parser.add_argument('--log', type=lambda x: x.lower()=='true', default=False)
     parser.add_argument('--project_folder', type=str, default='ROBUSTNESS')
     

@@ -1,7 +1,6 @@
 from module.backbone.resnet import load_resnet
 from module.backbone.irevnet import iRevNet
-import torch
-
+from module.backbone.wrapper import Wrapper
 
 def load_teacher_model(args):
     # Backbone
@@ -16,7 +15,8 @@ def load_teacher_model(args):
                   nChannels=[24, 96, 384, 1536], nClasses=1000, init_ds=2,
                   dropout_rate=0., affineBN=True, in_shape=[3, 256, 256], mult=4)
     
-    return model, decoder
+    model_wrapper = Wrapper(model=model, decoder=decoder)
+    return model_wrapper
         
 
 
