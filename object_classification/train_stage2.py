@@ -27,6 +27,22 @@ import pathlib
 import random
     
 
+def freeze_batchnorm(model):
+    for name, layer in model._modules.items():
+        if isinstance(layer, nn.Sequential):
+            freeze_batchnorm(layer)
+        else:
+            for name, layer2 in layer._modules.items():
+                if isinstance(layer2, nn.Sequential):
+                    freeze_batchnorm(layer2)
+                else:
+                    if isinstance(layer2, nn.BatchNorm2d):
+                        if hasattr(layer2, 'weight'):
+                            layer2.weight.requires_grad_(False)
+                        if hasattr(layer2, 'bias'):
+                            layer2.bias.requires_grad_(False)
+                            
+                            
 def set_random_seed(seed_value, use_cuda=True):
     np.random.seed(seed_value) # cpu vars
     torch.manual_seed(seed_value) # cpu  vars
