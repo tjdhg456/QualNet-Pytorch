@@ -249,16 +249,16 @@ def validation(args, rank, epoch, model, multi_gpu, val_loader, resolution, logg
             input, label = input.to(rank), label.to(rank)
             output = model(input, train=False)
             
-        # Metrics
-        acc_result = accuracy(output, label, topk=(1, 5))
-        
-        if (num_gpu > 1) and args.ddp:
-            mean_acc1 += reduce_tensor(acc_result[0], num_gpu)
-            mean_acc5 += reduce_tensor(acc_result[1], num_gpu)
+            # Metrics
+            acc_result = accuracy(output, label, topk=(1, 5))
+            
+            if (num_gpu > 1) and args.ddp:
+                mean_acc1 += reduce_tensor(acc_result[0], num_gpu)
+                mean_acc5 += reduce_tensor(acc_result[1], num_gpu)
 
-        else:
-            mean_acc1 += acc_result[0]
-            mean_acc5 += acc_result[1]
+            else:
+                mean_acc1 += acc_result[0]
+                mean_acc5 += acc_result[1]
         
 
     # Val Result
