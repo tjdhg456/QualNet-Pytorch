@@ -130,7 +130,7 @@ def main(rank, args, save_folder, log, master_port):
     else:
         if multi_gpu:
             model = nn.DataParallel(model).to(rank)
-            decoder = nn.DataParallel(decoder).to(rank)
+            decoder = decoder.to(rank)
         else:
             model = model.to(rank)
             decoder = decoder.to(rank)

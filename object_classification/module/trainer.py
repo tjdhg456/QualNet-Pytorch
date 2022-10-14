@@ -153,10 +153,7 @@ def train_stage2(args, rank, epoch, model, decoder, criterion, optimizer, multi_
                 LR_output, out_bij = model(LR_input, train=True)
                 
                 with torch.no_grad():
-                    if multi_gpu:
-                        HR_img_gen = decoder.module.inverse(out_bij)
-                    else:
-                        HR_img_gen = decoder.inverse(out_bij)
+                    HR_img_gen = decoder.inverse(out_bij)
                         
                 loss_cls = criterion(LR_output, label)
                 loss_recon = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_input))
@@ -172,10 +169,7 @@ def train_stage2(args, rank, epoch, model, decoder, criterion, optimizer, multi_
             LR_output, out_bij = model(LR_input, train=True)
             
             with torch.no_grad():
-                if multi_gpu:
-                    HR_img_gen = decoder.module.inverse(out_bij)
-                else:
-                    HR_img_gen = decoder.inverse(out_bij)
+                HR_img_gen = decoder.inverse(out_bij)
                     
             loss_cls = criterion(LR_output, label)
             loss_recon = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_input))
