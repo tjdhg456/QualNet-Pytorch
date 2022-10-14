@@ -220,7 +220,7 @@ if __name__=='__main__':
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--lr', type=float, default=0.1)
     parser.add_argument('--down_size', type=int, default=1)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_workers', type=int, default=4)
         
     parser.add_argument('--log', type=lambda x: x.lower()=='true', default=False)
     parser.add_argument('--project_folder', type=str, default='ROBUSTNESS')
