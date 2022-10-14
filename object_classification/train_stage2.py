@@ -211,7 +211,7 @@ if __name__=='__main__':
     parser.add_argument('--save_epoch', type=int, default=10)
     parser.add_argument('--total_epoch', type=int, default=90)
     
-    parser.add_argument('--data_dir', type=str, default='/home/sung/dataset')
+    parser.add_argument('--data_dir', type=str, default='/data/sung/dataset')
     parser.add_argument('--data_type', type=str, default='imagenet')
     
     parser.add_argument('--backbone', type=str, default='resnet50')
@@ -220,7 +220,7 @@ if __name__=='__main__':
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--lr', type=float, default=0.1)
     parser.add_argument('--down_size', type=int, default=1)
-    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--num_workers', type=int, default=8)
         
     parser.add_argument('--log', type=lambda x: x.lower()=='true', default=False)
     parser.add_argument('--project_folder', type=str, default='ROBUSTNESS')
@@ -229,7 +229,7 @@ if __name__=='__main__':
     parser.add_argument('--ddp', type=lambda x: x.lower()=='true', default=False)
     parser.add_argument('--mixed_precision', type=lambda x: x.lower()=='true', default=True)
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--task', type=str, default='qualnet_stage1')
+    parser.add_argument('--task', type=str, default='qualnet_stage2')
     
     parser.add_argument('--teacher_path', type=str, default='//')
     args = parser.parse_args()
