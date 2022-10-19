@@ -279,8 +279,8 @@ def validation(args, rank, epoch, model, multi_gpu, val_loader, logger):
     if (rank == 0) or (rank == 'cuda'):
         print('Epoch-(%d/%d) - val_ACC@1: %.2f, val_ACC@5-%.2f' % (epoch, args.total_epoch, \
                                                                     mean_acc1, mean_acc5))
-        logger['result/val_acc1_down%d' %resolution].log(mean_acc1)
-        logger['result/val_acc5_down%d' %resolution].log(mean_acc5)
+        logger['result/val_acc1_down%d' %args.down_size].log(mean_acc1)
+        logger['result/val_acc5_down%d' %args.down_size].log(mean_acc5)
 
     result = {'acc1':mean_acc1, 'acc5':mean_acc5}
 
