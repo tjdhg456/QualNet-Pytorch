@@ -50,7 +50,8 @@ def train_stage1(args, rank, epoch, model_wrapper, criterion, optimizer, multi_g
         
     # Run
     for iter, tr_data in enumerate(tqdm(tr_loader)):
-        HR_img, _, label = tr_data
+        # Dataset
+        HR_img, label = tr_data
         HR_img, label = HR_img.to(rank), label.to(rank)
 
         # Forward
@@ -141,7 +142,14 @@ def train_stage2(args, rank, epoch, model, decoder, criterion, optimizer, multi_
     
     # Run
     for iter, tr_data in enumerate(tqdm(tr_loader)):
-        HR_input, LR_input, label = tr_data
+        # Dataset
+        HR_input, label = tr_data
+        
+        # DownScale
+        img_size= HR_input.size(-1)
+        LR_input = F.interpolate(HR_input, size=int(args.down_size))
+        LR_input = F.interpolate(LR_input, size=img_size)
+
         HR_input, LR_input, label = HR_input.to(rank), LR_input.to(rank), label.to(rank)
 
         # Forward
@@ -225,7 +233,7 @@ def train_stage2(args, rank, epoch, model, decoder, criterion, optimizer, multi_
     return save_module
 
 
-def validation(args, rank, epoch, model, multi_gpu, val_loader, resolution, logger):
+def validation(args, rank, epoch, model, multi_gpu, val_loader, logger):
     # GPU setup
     num_gpu = len(args.gpus.split(','))
 
@@ -239,8 +247,14 @@ def validation(args, rank, epoch, model, multi_gpu, val_loader, resolution, logg
     # Run
     with torch.no_grad():
         for iter, val_data in enumerate(tqdm(val_loader)):
-            _, input, label = val_data
-            input, label = input.to(rank), label.to(rank)
+            # Dataset
+            input, label = val_data
+            
+            # DownScale
+            img_size= input.size(-1)
+            input = F.interpolate(input, size=int(args.down_size))
+            input = F.interpolate(input, size=img_size)
+            
             output = model(input, train=False)
             
             # Metrics

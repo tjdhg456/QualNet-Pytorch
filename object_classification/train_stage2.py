@@ -17,7 +17,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from module.load_model import load_student_model
 from module.trainer import train_stage2, validation
-from dataset.dataset import load_data
+from dataset.dataset import load_imagenet
 from copy import deepcopy
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -121,7 +121,7 @@ def main(rank, args, save_folder, log, master_port):
         torch.cuda.set_device(rank)
 
         model.to(rank)
-        model = DDP(model, device_ids=[rank])
+        model = DDP(model, device_ids=[rank], find_unused_parameters=True)
         model = apply_gradient_allreduce(model)
         
         decoder.to(rank)
@@ -142,8 +142,7 @@ def main(rank, args, save_folder, log, master_port):
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 60, 80], gamma=0.1)
 
     # Dataset and DataLoader
-    tr_dataset = load_data(args, data_type='train')
-    val_dataset_list = load_data(args, data_type='val')
+    tr_dataset, val_dataset = load_imagenet(args)
 
     # Data Loader
     if ddp:
@@ -155,18 +154,13 @@ def main(rank, args, save_folder, log, master_port):
                                                   sampler=tr_sampler)
         
         # val_dataset
-        val_loader_list = []        
-        for val_dataset in val_dataset_list:
-            val_loader_list.append( torch.utils.data.DataLoader(dataset=val_dataset, batch_size=args.batch_size,
-                                    shuffle=False, num_workers=args.num_workers, pin_memory=True,
-                                    sampler=torch.utils.data.distributed.DistributedSampler(dataset=val_dataset, num_replicas=num_gpu, rank=rank)))
+        val_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=args.batch_size,
+                                                 shuffle=False, num_workers=args.num_workers, pin_memory=True,
+                                                 sampler=torch.utils.data.distributed.DistributedSampler(dataset=val_dataset, num_replicas=num_gpu, rank=rank))
     
     else:
         tr_loader = DataLoader(tr_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True, num_workers=args.num_workers)
-        
-        val_loader_list = []
-        for val_dataset in val_dataset_list:
-            val_loader_list.append( DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, pin_memory=True, num_workers=args.num_workers) )  
+        val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, pin_memory=True, num_workers=args.num_workers)
 
 
     # Mixed Precision
@@ -192,13 +186,8 @@ def main(rank, args, save_folder, log, master_port):
 
     
         # Validation
-        if epoch % args.save_epoch == 0:
-            if args.down_size == 0:
-                result = validation(args, rank, epoch, model, multi_gpu, val_loader_list[0], 256, run)
-            else:
-                resolution = [256, 128, 64, 32]
-                for ix, val_loader in enumerate(val_loader_list):
-                    result = validation(args, rank, epoch, model, multi_gpu, val_loader, resolution[ix], run)
+        result = validation(args, rank, epoch, model, multi_gpu, val_loader, run)
+
 
     if ddp:
         cleanup()
