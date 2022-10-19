@@ -249,6 +249,7 @@ def validation(args, rank, epoch, model, multi_gpu, val_loader, logger):
         for iter, val_data in enumerate(tqdm(val_loader)):
             # Dataset
             input, label = val_data
+            input, label = input.to(rank), label.to(rank)
             
             # DownScale
             img_size= input.size(-1)
