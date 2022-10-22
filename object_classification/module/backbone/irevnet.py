@@ -166,7 +166,10 @@ class iRevNet(nn.Module):
         self.first = True
 
         self.gp = nn.AdaptiveAvgPool2d((1,1))
-        self.linear = nn.Linear(3072, 2048)
+        
+        # for cifar (512, 2048)
+        # for imagenet (3072, 2048)
+        self.linear = nn.Linear(512, 2048)
         
         print(' == Building iRevNet %d == ' % (sum(nBlocks) * 3 + 1))
         if not nChannels:
@@ -235,12 +238,13 @@ class iRevNet(nn.Module):
 
 
 if __name__ == '__main__':
-    model = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
-                    nChannels=[24, 96, 384, 1536], nClasses=1000, init_ds=2,
-                    dropout_rate=0., affineBN=True, in_shape=[3, 256, 256],
+    model = iRevNet(nBlocks=[18, 18, 18], nStrides=[1, 2, 2],
+                    nChannels=[16, 64, 256], nClasses=10, init_ds=2,
+                    dropout_rate=0., affineBN=True, in_shape=[3, 32, 32],
                     mult=4)
     
     model = model.to('cuda')
-    x = torch.ones([1,3,256,256]).to('cuda')
+    x = torch.ones([1,3,32,32]).to('cuda')
     out = model(x)
     print('')
+    

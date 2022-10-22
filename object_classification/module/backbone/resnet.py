@@ -127,23 +127,31 @@ class Bottleneck(nn.Module):
         return out
 
 class ResNet(nn.Module):
-    def __init__(self, block, layers, num_classes=1000, attention_type=None):
+    def __init__(self, block, layers, num_classes=1000, attention_type=None, imagenet=True):
         self.inplanes = 64
         super(ResNet, self).__init__()
         # different model config between ImageNet and CIFAR 
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        self.imagenet = imagenet
+        
+        if self.imagenet:
+            self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        else:
+            self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
 
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
-
-
-        self.layer1 = self._make_layer(block, 64,  layers[0], stride=2, attention_type=attention_type)
+        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        
+        self.layer1 = self._make_layer(block, 64,  layers[0], stride=1, attention_type=attention_type)
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2, attention_type=attention_type)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2, attention_type=attention_type)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2, attention_type=attention_type)
 
-        self.conv_bridge = nn.Conv2d(512 * block.expansion, 3072, kernel_size=3, stride=1, padding=1)
+        if self.imagenet:
+            self.conv_bridge = nn.Conv2d(512 * block.expansion, 3072, kernel_size=3, stride=1, padding=1)
+        else:
+            self.conv_bridge = nn.Conv2d(512 * block.expansion, 512, kernel_size=3, stride=1, padding=1)
 
         self.fc = nn.Linear(512 * block.expansion, num_classes)
         
@@ -183,6 +191,8 @@ class ResNet(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
+        if self.imagenet:
+            x = self.maxpool(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -203,20 +213,20 @@ class ResNet(nn.Module):
             return x
 
 
-def load_resnet(depth, num_classes, attention_type):
+def load_resnet(depth, num_classes, attention_type, imagenet):
     assert depth in [18, 34, 50, 101], 'network depth should be 18, 34, 50 or 101'
 
     if depth == 18:
-        model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes, attention_type=attention_type)
+        model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes, attention_type=attention_type, imagenet=imagenet)
 
     elif depth == 34:
-        model = ResNet(BasicBlock, [3, 4, 6, 3], num_classes, attention_type=attention_type)
+        model = ResNet(BasicBlock, [3, 4, 6, 3], num_classes, attention_type=attention_type, imagenet=imagenet)
 
     elif depth == 50:
-        model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes, attention_type=attention_type)
+        model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes, attention_type=attention_type, imagenet=imagenet)
 
     elif depth == 101:
-        model = ResNet(Bottleneck, [3, 4, 23, 3], num_classes, attention_type=attention_type)
+        model = ResNet(Bottleneck, [3, 4, 23, 3], num_classes, attention_type=attention_type, imagenet=imagenet)
 
     return model
 

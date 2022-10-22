@@ -17,7 +17,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from module.load_model import load_student_model
 from module.trainer import train_stage2, validation
-from dataset.dataset import load_imagenet
+from dataset.dataset import load_imagenet, load_svhn
 from copy import deepcopy
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -141,8 +141,15 @@ def main(rank, args, save_folder, log, master_port):
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 60, 80], gamma=0.1)
 
+
     # Dataset and DataLoader
-    tr_dataset, val_dataset = load_imagenet(args)
+    if args.data_type == 'imagenet':
+        tr_dataset, val_dataset = load_imagenet(args)
+    elif args.data_type == 'svhn':
+        tr_dataset, val_dataset = load_svhn(args)
+    else:
+        raise('Select Proper Dataset')
+    
 
     # Data Loader
     if ddp:
@@ -209,22 +216,29 @@ if __name__=='__main__':
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--lr', type=float, default=0.1)
     parser.add_argument('--down_size', type=int, default=1)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_workers', type=int, default=4)
         
     parser.add_argument('--log', type=lambda x: x.lower()=='true', default=False)
     parser.add_argument('--project_folder', type=str, default='ROBUSTNESS')
     
     parser.add_argument('--gpus', type=str, default='2')
     parser.add_argument('--ddp', type=lambda x: x.lower()=='true', default=False)
-    parser.add_argument('--mixed_precision', type=lambda x: x.lower()=='true', default=True)
+    parser.add_argument('--mixed_precision', type=lambda x: x.lower()=='true', default=False)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--task', type=str, default='qualnet_stage2')
     
     parser.add_argument('--teacher_path', type=str, default='//')
     args = parser.parse_args()
 
-    args.num_classes = 1000
     args.pretrained_student = True
+
+    if args.data_type == 'imagenet':
+        args.num_classes = 1000
+    elif args.data_type == 'svhn':
+        args.num_classes = 10
+    else:
+        raise('Select Proper Dataset')
+    
     
     # Configure
     save_folder = args.save_dir

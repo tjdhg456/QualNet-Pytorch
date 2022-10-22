@@ -2,13 +2,7 @@ from torchvision.transforms import transforms
 import torchvision
 import os
 from torch.utils.data import Dataset, DataLoader
-import numpy as np
-from random import shuffle
-import torch
-import random
-from glob import glob
-from PIL import Image
-import pickle
+from torchvision.datasets.svhn import SVHN
 
 
 def load_imagenet(args):
@@ -33,4 +27,24 @@ def load_imagenet(args):
         
     tr_dataset = torchvision.datasets.ImageFolder(os.path.join(args.data_dir, 'imagenet', 'train'), transform=tr_transform)
     val_dataset = torchvision.datasets.ImageFolder(os.path.join(args.data_dir, 'imagenet', 'val'), transform=val_transform)
+    return tr_dataset, val_dataset
+
+
+def load_svhn(args):
+    normalize = transforms.Normalize(mean=[0.4376821, 0.4437697, 0.47280442],
+                                     std=[0.19803012, 0.20101562, 0.19703614])
+
+    tr_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize,
+    ])
+
+    val_transform = transforms.Compose([
+        transforms.ToTensor(),
+        normalize,
+    ])
+        
+    tr_dataset = SVHN(os.path.join(args.data_dir, 'svhn'), split='train', transform=tr_transform, download=True)
+    val_dataset = SVHN(os.path.join(args.data_dir, 'svhn'), split='test', transform=val_transform, download=True)
     return tr_dataset, val_dataset
