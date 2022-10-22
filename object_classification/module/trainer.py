@@ -252,10 +252,11 @@ def validation(args, rank, epoch, model, multi_gpu, val_loader, logger):
             input, label = input.to(rank), label.to(rank)
             
             # DownScale
-            img_size= input.size(-1)
-            input = F.interpolate(input, size=int(args.down_size))
-            input = F.interpolate(input, size=img_size)
-            
+            if args.down_size != 0:
+                img_size= input.size(-1)
+                input = F.interpolate(input, size=int(args.down_size))
+                input = F.interpolate(input, size=img_size)
+                
             output = model(input, train=False)
             
             # Metrics
