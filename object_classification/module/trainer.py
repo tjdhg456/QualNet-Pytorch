@@ -62,7 +62,7 @@ def train_stage1(args, rank, epoch, model_wrapper, criterion, optimizer, multi_g
                 out, HR_img_gen = model_wrapper(HR_img, train=True)
                 loss_cls = criterion(out, label)
                 loss_recon = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_img))
-                loss_total = loss_cls + loss_recon * (0.1)
+                loss_total = loss_cls + loss_recon * (1.0)
 
                 scaler.scale(loss_total).backward()
                 scaler.step(optimizer)
@@ -72,7 +72,7 @@ def train_stage1(args, rank, epoch, model_wrapper, criterion, optimizer, multi_g
             out, HR_img_gen = model_wrapper(HR_img, train=True)
             loss_cls = criterion(out, label)
             loss_recon = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_img))
-            loss_total = loss_cls + loss_recon * (0.1)
+            loss_total = loss_cls + loss_recon * (1.0)
             
             loss_total.backward()
             optimizer.step()
@@ -165,7 +165,7 @@ def train_stage2(args, rank, epoch, model, decoder, criterion, optimizer, multi_
                         
                 loss_cls = criterion(LR_output, label)
                 loss_recon = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_input))
-                loss_total = loss_cls + loss_recon * 0.1
+                loss_total = loss_cls + loss_recon * 1.0
                 
                 # Backward
                 scaler.scale(loss_total).backward()
@@ -181,7 +181,7 @@ def train_stage2(args, rank, epoch, model, decoder, criterion, optimizer, multi_
                     
             loss_cls = criterion(LR_output, label)
             loss_recon = F.l1_loss(torch.clip(HR_img_gen, 0, 1), un_normalize(HR_input))
-            loss_total = loss_cls + loss_recon * 0.1
+            loss_total = loss_cls + loss_recon * 1.0
                     
             loss_total.backward()
             optimizer.step()
