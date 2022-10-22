@@ -174,10 +174,10 @@ def main(rank, args, save_folder, log, master_port):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/imp')
+    parser.add_argument('--save_dir', type=str, default='/home/sung/checkpoint/imp')
     parser.add_argument('--total_epoch', type=int, default=90)
     
-    parser.add_argument('--data_dir', type=str, default='/data/sung/dataset')
+    parser.add_argument('--data_dir', type=str, default='/home/sung/dataset')
     parser.add_argument('--data_type', type=str, default='imagenet')
     
     parser.add_argument('--backbone', type=str, default='resnet50')

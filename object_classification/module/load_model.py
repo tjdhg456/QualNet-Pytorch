@@ -13,9 +13,14 @@ def load_teacher_model(args):
     
     
     # Decoder
-    decoder = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
-                  nChannels=[24, 96, 384, 1536], nClasses=1000, init_ds=2,
-                  dropout_rate=0., affineBN=True, in_shape=[3, 256, 256], mult=4)
+    if args.data_type == 'imagenet':
+        decoder = iRevNet(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
+                    nChannels=[24, 96, 384, 1536], nClasses=1000, init_ds=2,
+                    dropout_rate=0., affineBN=True, in_shape=[3, 256, 256], mult=4)
+    else:
+        decoder = iRevNet(nBlocks=[18, 18, 18], nStrides=[1, 2, 2],
+                        nChannels=[16, 64, 256], nClasses=10, init_ds=2,
+                        dropout_rate=0., affineBN=True, in_shape=[3, 32, 32], mult=4)
     
     model_wrapper = Wrapper(model=model, decoder=decoder)
     return model_wrapper
@@ -41,7 +46,6 @@ def load_student_model(args):
     else:
         teacher_model = iRevNet(nBlocks=[18, 18, 18], nStrides=[1, 2, 2],
                         nChannels=[16, 64, 256], nClasses=10, init_ds=2,
-                        dropout_rate=0., affineBN=True, in_shape=[3, 32, 32],
-                        mult=4)
+                        dropout_rate=0., affineBN=True, in_shape=[3, 32, 32], mult=4)
     
     return model, teacher_model
